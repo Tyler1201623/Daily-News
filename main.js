@@ -57,17 +57,12 @@ async function loadNews(category) {
     
     try {
         const response = await fetch(
-            `https://newsapi.org/v2/top-headlines?category=${category}&language=en&apiKey=${API_CONFIG.newsapi.key}&pageSize=${pageSize}`,
-            {
-                headers: {
-                    'Authorization': API_CONFIG.newsapi.key
-                }
-            }
+            `https://newsdata.io/api/1/news?category=${category}&language=en&apikey=${API_CONFIG.newsdata.key}&size=${pageSize}`
         );
         const data = await response.json();
         
-        if (data.articles && data.articles.length > 0) {
-            processAndDisplayNews(data.articles);
+        if (data.results && data.results.length > 0) {
+            processAndDisplayNews(data.results);
         }
     } catch (error) {
         console.error('Error loading news:', error);
@@ -76,7 +71,6 @@ async function loadNews(category) {
         hideLoader();
     }
 }
-
 function processAndDisplayNews(articles) {
     const validArticles = articles.filter(article => 
         article?.title &&
