@@ -57,7 +57,7 @@ async function loadNews(category) {
     
     try {
         const response = await fetch(
-            `${API_CONFIG.newsapi.baseUrl}/top-headlines?category=${category}&language=en&apiKey=${API_CONFIG.newsapi.key}&pageSize=${pageSize}`
+            `https://newsapi.org/v2/top-headlines?category=${category}&language=en&apiKey=${API_CONFIG.newsapi.key}&pageSize=${pageSize}`
         );
         const data = await response.json();
         
@@ -71,7 +71,6 @@ async function loadNews(category) {
         hideLoader();
     }
 }
-
 function processAndDisplayNews(articles) {
     const validArticles = articles.filter(article => 
         article?.title &&
