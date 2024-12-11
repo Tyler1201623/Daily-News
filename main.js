@@ -77,54 +77,26 @@ const newsCache = {
 
 async function loadNews(category) {
     showLoader();
+    const pageSize = window.innerWidth >= 1200 ? 100 : 
+                     window.innerWidth >= 768 ? 50 : 25;
     
-    const cachedNews = newsCache.get(category);
-    if (cachedNews) {
-        displayNews(cachedNews);
-        hideLoader();
-        return;
-    }
-
-    displaySampleNews(category);
-
     try {
-        const newsApiResponse = await fetch(
-            `${API_CONFIG.newsapi.baseUrl}/top-headlines?category=${category}&language=en&apiKey=${API_CONFIG.newsapi.key}&pageSize=100`
+        const response = await fetch(
+            `${API_CONFIG.newsapi.baseUrl}/top-headlines?category=${category}&language=en&apiKey=${API_CONFIG.newsapi.key}&pageSize=${pageSize}`
         );
+        const data = await response.json();
         
-        if (newsApiResponse.status === 429) {
-            const newsDataResponse = await fetch(
-                `${API_CONFIG.newsdata.baseUrl}/news?category=${category}&language=en&apikey=${API_CONFIG.newsdata.key}&size=100`
-            );
-            const newsDataResults = await newsDataResponse.json();
-            
-            if (newsDataResults.status === 'success') {
-                const articles = newsDataResults.results.map(article => ({
-                    title: article.title,
-                    description: article.description,
-                    url: article.link,
-                    urlToImage: article.image_url,
-                    source: { name: article.source_id },
-                    publishedAt: article.pubDate
-                }));
-                
-                newsCache.set(category, articles);
-                displayNews(articles);
-            }
-        } else {
-            const data = await newsApiResponse.json();
-            if (data.articles && data.articles.length > 0) {
-                newsCache.set(category, data.articles);
-                displayNews(data.articles);
-            }
+        if (data.articles && data.articles.length > 0) {
+            newsCache.set(category, data.articles);
+            displayNews(data.articles);
         }
     } catch (error) {
-        console.log('Using sample news while APIs refresh');
+        console.error('Error loading news:', error);
+        displaySampleNews(category);
     } finally {
         hideLoader();
     }
 }
-
 function displayNews(articles) {
     const validArticles = articles.filter(article => 
         article.title !== "removed" && 
