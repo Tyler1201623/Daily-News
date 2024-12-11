@@ -542,9 +542,10 @@
 
 /* Dark Mode Toggle Button */
 .theme-toggle {
-    position: fixed;
-    top: 1.5rem;
-    right: 1.5rem;
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
     background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
     width: 2.5rem;
     height: 2.5rem;
@@ -553,12 +554,11 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 1000;
+    z-index: 100;
     transition: all 0.3s ease;
 }
-
 .theme-toggle:hover {
-    transform: scale(1.1);
+    transform: translateY(-50%) scale(1.1);
     box-shadow: 0 0 30px rgba(37, 99, 235, 0.3);
 }
 
@@ -630,4 +630,45 @@ body, .news-card, .nav-container, .search-bar input {
     background: var(--primary-color);
     border-color: var(--primary-color);
     color: white;
+}
+
+/* Refined Search Bar and Theme Toggle Layout */
+.search-bar {
+    position: relative;
+    display: flex;
+    gap: 0.5rem;
+    margin-right: 3.5rem;
+    width: 100%;
+    max-width: 400px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .nav-container {
+        flex-direction: column;
+        padding: 1rem;
+    }
+
+    .search-bar {
+        margin: 1rem 0;
+        max-width: 100%;
+    }
+
+    .theme-toggle {
+        top: 1rem;
+        right: 1rem;
+        transform: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .search-bar input {
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .theme-toggle {
+        width: 2rem;
+        height: 2rem;
+    }
 }
