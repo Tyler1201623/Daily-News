@@ -1,3 +1,5 @@
+let currentCategory = 'general';
+
 const API_CONFIG = {
     newsapi: {
         key: '159fd6b862ae4251999890aca2260530',
@@ -9,7 +11,18 @@ const API_CONFIG = {
     }
 };
 
-let currentCategory = 'general';
+const newsCache = {
+    data: new Map(),
+    set(category, data, timestamp = Date.now()) {
+        this.data.set(category, { data, timestamp });
+    },
+    get(category) {
+        const cached = this.data.get(category);
+        if (!cached) return null;
+        if (Date.now() - cached.timestamp > 900000) return null;
+        return cached.data;
+    }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     loadNews(currentCategory);
@@ -18,63 +31,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function setupEventListeners() {
     const categoryButtons = document.querySelectorAll('.category-btn');
-    const searchBtn = document.getElementById('searchBtn');
-    const searchInput = document.getElementById('searchInput');
-
     categoryButtons.forEach(button => {
         button.addEventListener('click', () => {
-            categoryButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             currentCategory = button.dataset.category;
             loadNews(currentCategory);
         });
     });
 
-    searchBtn.addEventListener('click', () => {
-        const query = searchInput.value.trim();
-        if (query) searchNews(query);
-    });
-
-    searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const query = searchInput.value.trim();
-            if (query) searchNews(query);
-        }
-    });
-
+    // Dark mode toggle functionality
     const darkModeToggle = document.getElementById('darkModeToggle');
-    darkModeToggle.addEventListener('click', toggleDarkMode);
-    
-    // Check user preference
-    if (localStorage.getItem('darkMode') === 'true') {
-        document.documentElement.classList.add('dark-mode');
-        darkModeToggle.classList.add('active');
-    }
+    darkModeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        darkModeToggle.classList.toggle('active');
+        const icon = darkModeToggle.querySelector('i');
+        icon.classList.toggle('fa-moon');
+        icon.classList.toggle('fa-sun');
+    });
 }
-
-function toggleDarkMode() {
-    document.documentElement.classList.toggle('dark-mode');
-    const isDark = document.documentElement.classList.contains('dark-mode');
-    localStorage.setItem('darkMode', isDark);
-    document.getElementById('darkModeToggle').classList.toggle('active');
-}
-const CACHE_CONFIG = {
-    SHORT: 900000
-};
-
-const newsCache = {
-    data: new Map(),
-    set(category, data) {
-        this.data.set(category, {
-            data: data,
-            timestamp: Date.now()
-        });
-    },
-    get(category) {
-        return this.data.get(category)?.data;
-    }
-};
-
 async function loadNews(category) {
     showLoader();
     const pageSize = window.innerWidth >= 1200 ? 100 : 
@@ -82,13 +57,12 @@ async function loadNews(category) {
     
     try {
         const response = await fetch(
-            `${API_CONFIG.newsapi.baseUrl}/top-headlines?category=${category}&language=en&apiKey=${API_CONFIG.newsapi.key}&pageSize=${pageSize}`
+            `/api/news?category=${category}&pageSize=${pageSize}`
         );
         const data = await response.json();
         
         if (data.articles && data.articles.length > 0) {
-            newsCache.set(category, data.articles);
-            displayNews(data.articles);
+            processAndDisplayNews(data.articles);
         }
     } catch (error) {
         console.error('Error loading news:', error);
@@ -97,27 +71,44 @@ async function loadNews(category) {
         hideLoader();
     }
 }
-function displayNews(articles) {
+
+function processAndDisplayNews(articles) {
     const validArticles = articles.filter(article => 
-        article.title !== "removed" && 
-        article.description !== "removed" &&
-        article.title !== "[Removed]" &&
-        article.description !== "[Removed]"
+        article?.title &&
+        article?.description &&
+        !article.title.includes('[Removed]') &&
+        !article.description.includes('[Removed]')
     );
+    
+    newsCache.set(currentCategory, validArticles);
+    displayNews(validArticles);
+}
+
+function displayNews(articles) {
+    if (!articles?.length) return;
     
     const featuredNews = document.getElementById('featuredNews');
     const latestNews = document.getElementById('latestNews');
     
-    featuredNews.innerHTML = validArticles.slice(0, 3).map(article => createNewsCard(article, true)).join('');
-    latestNews.innerHTML = validArticles.slice(3).map(article => createNewsCard(article, false)).join('');
+    const featuredCount = Math.max(3, Math.floor(articles.length * 0.25));
+    
+    featuredNews.innerHTML = articles
+        .slice(0, featuredCount)
+        .map(article => createNewsCard(article, true))
+        .join('');
+        
+    latestNews.innerHTML = articles
+        .slice(featuredCount)
+        .map(article => createNewsCard(article, false))
+        .join('');
 }
 
 function createNewsCard(article, isFeatured) {
     const categoryImages = {
-        technology: 'https://picsum.photos/800/400?tech',
-        business: 'https://picsum.photos/800/400?business',
-        health: 'https://picsum.photos/800/400?health',
-        general: 'https://picsum.photos/800/400?news'
+        technology: 'https://source.unsplash.com/800x400/?technology',
+        business: 'https://source.unsplash.com/800x400/?business',
+        health: 'https://source.unsplash.com/800x400/?health',
+        general: 'https://source.unsplash.com/800x400/?news'
     };
 
     const fallbackImage = categoryImages[currentCategory] || categoryImages.general;
@@ -125,15 +116,15 @@ function createNewsCard(article, isFeatured) {
     return `
         <div class="news-card ${isFeatured ? 'featured' : ''}" data-article='${JSON.stringify(article)}'>
             <img class="news-image" 
-                 src="${article.urlToImage || fallbackImage + '?' + Date.now()}" 
-                 alt="${article.title}" 
+                 src="${article.urlToImage || fallbackImage}" 
+                 alt="${article.title}"
                  loading="lazy"
-                 onerror="this.src='${fallbackImage + '?' + Date.now()}'">
+                 onerror="this.src='${fallbackImage}'">
             <div class="news-content">
                 <h3 class="news-title">${article.title}</h3>
                 <p class="news-description">${article.description || 'No description available'}</p>
                 <div class="news-meta">
-                    <span>${article.source.name}</span>
+                    <span>${article.source?.name || 'Unknown Source'}</span>
                     <span>${new Date(article.publishedAt).toLocaleDateString()}</span>
                 </div>
                 <button class="read-more-btn" onclick="showFullArticle(this)">
@@ -188,7 +179,7 @@ function displaySampleNews(category) {
             title: "Loading latest news...",
             description: "Please wait while we fetch the latest stories for you.",
             url: "#",
-            urlToImage: `https://picsum.photos/800/400?${category}`,
+            urlToImage: `https://source.unsplash.com/800x400/?${category}`,
             source: { name: "Daily Pulse" },
             publishedAt: new Date().toISOString()
         },
@@ -196,7 +187,7 @@ function displaySampleNews(category) {
             title: "Fetching trending stories...",
             description: "Getting the most relevant news for your interests.",
             url: "#",
-            urlToImage: `https://picsum.photos/800/400?${category}-2`,
+            urlToImage: `https://source.unsplash.com/800x400/?${category}-2`,
             source: { name: "Daily Pulse" },
             publishedAt: new Date().toISOString()
         },
@@ -204,7 +195,7 @@ function displaySampleNews(category) {
             title: "Updating news feed...",
             description: "Connecting to news sources around the world.",
             url: "#",
-            urlToImage: `https://picsum.photos/800/400?${category}-3`,
+            urlToImage: `https://source.unsplash.com/800x400/?${category}-3`,
             source: { name: "Daily Pulse" },
             publishedAt: new Date().toISOString()
         }
