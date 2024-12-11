@@ -40,7 +40,6 @@ function setupEventListeners() {
         });
     });
 
-    // Dark mode toggle functionality
     const darkModeToggle = document.getElementById('darkModeToggle');
     darkModeToggle.addEventListener('click', () => {
         document.body.classList.toggle('dark-mode');
@@ -50,6 +49,7 @@ function setupEventListeners() {
         icon.classList.toggle('fa-sun');
     });
 }
+
 async function loadNews(category) {
     showLoader();
     const pageSize = window.innerWidth >= 1200 ? 100 : 
@@ -57,12 +57,12 @@ async function loadNews(category) {
     
     try {
         const response = await fetch(
-            `https://newsdata.io/api/1/news?category=${category}&language=en&apikey=${API_CONFIG.newsdata.key}&size=${pageSize}`
+            `${API_CONFIG.newsapi.baseUrl}/top-headlines?category=${category}&language=en&apiKey=${API_CONFIG.newsapi.key}&pageSize=${pageSize}`
         );
         const data = await response.json();
         
-        if (data.results && data.results.length > 0) {
-            processAndDisplayNews(data.results);
+        if (data.articles && data.articles.length > 0) {
+            processAndDisplayNews(data.articles);
         }
     } catch (error) {
         console.error('Error loading news:', error);
@@ -71,12 +71,15 @@ async function loadNews(category) {
         hideLoader();
     }
 }
+
 function processAndDisplayNews(articles) {
     const validArticles = articles.filter(article => 
         article?.title &&
         article?.description &&
         !article.title.includes('[Removed]') &&
-        !article.description.includes('[Removed]')
+        !article.description.includes('[Removed]') &&
+        !article.title.includes('Luigi Mangione') &&
+        !article.source?.name?.includes('Forbes')
     );
     
     newsCache.set(currentCategory, validArticles);
@@ -86,45 +89,83 @@ function processAndDisplayNews(articles) {
 function displayNews(articles) {
     if (!articles?.length) return;
     
-    const featuredNews = document.getElementById('featuredNews');
-    const latestNews = document.getElementById('latestNews');
-    
-    const featuredCount = Math.max(3, Math.floor(articles.length * 0.25));
-    
-    featuredNews.innerHTML = articles
+    const totalArticles = articles.length;
+    const featuredCount = Math.ceil(totalArticles * 0.2);
+    const trendingCount = Math.ceil(totalArticles * 0.3);
+    const breakingCount = Math.ceil(totalArticles * 0.2);
+    const latestCount = totalArticles - (featuredCount + trendingCount + breakingCount);
+
+    const mainContent = document.querySelector('main');
+    mainContent.innerHTML = `
+        <div class="featured-container">
+            <h2>Featured Stories</h2>
+            <div id="featuredNews" class="featured-grid"></div>
+        </div>
+        
+        <div class="trending-container">
+            <h2>Trending Now</h2>
+            <div id="trendingNews" class="news-grid"></div>
+        </div>
+
+        <div class="breaking-container">
+            <h2>Breaking News</h2>
+            <div id="breakingNews" class="news-grid"></div>
+        </div>
+        
+        <div class="latest-container">
+            <h2>Latest Updates</h2>
+            <div id="latestNews" class="news-grid"></div>
+        </div>
+    `;
+
+    document.getElementById('featuredNews').innerHTML = articles
         .slice(0, featuredCount)
         .map(article => createNewsCard(article, true))
         .join('');
         
-    latestNews.innerHTML = articles
-        .slice(featuredCount)
-        .map(article => createNewsCard(article, false))
+    document.getElementById('trendingNews').innerHTML = articles
+        .slice(featuredCount, featuredCount + trendingCount)
+        .map(article => createNewsCard(article))
+        .join('');
+        
+    document.getElementById('breakingNews').innerHTML = articles
+        .slice(featuredCount + trendingCount, featuredCount + trendingCount + breakingCount)
+        .map(article => createNewsCard(article))
+        .join('');
+        
+    document.getElementById('latestNews').innerHTML = articles
+        .slice(featuredCount + trendingCount + breakingCount)
+        .map(article => createNewsCard(article))
         .join('');
 }
 
 function createNewsCard(article, isFeatured) {
-    const categoryImages = {
-        technology: 'https://source.unsplash.com/800x400/?technology',
-        business: 'https://source.unsplash.com/800x400/?business',
-        health: 'https://source.unsplash.com/800x400/?health',
-        general: 'https://source.unsplash.com/800x400/?news'
+    // Sanitize article data for JSON
+    const safeArticle = {
+        title: article.title || '',
+        description: article.description || '',
+        url: article.url || '#',
+        urlToImage: article.urlToImage || '',
+        source: { name: article.source?.name || 'Unknown' },
+        publishedAt: article.publishedAt || new Date().toISOString()
     };
-
-    const fallbackImage = categoryImages[currentCategory] || categoryImages.general;
+    
+    const imageUrl = safeArticle.urlToImage || 
+                    `https://source.unsplash.com/800x400/?${safeArticle.title.split(' ').slice(0,2).join(',')}`;
     
     return `
-        <div class="news-card ${isFeatured ? 'featured' : ''}" data-article='${JSON.stringify(article)}'>
+        <div class="news-card ${isFeatured ? 'featured' : ''}" data-article='${JSON.stringify(safeArticle)}'>
             <img class="news-image" 
-                 src="${article.urlToImage || fallbackImage}" 
-                 alt="${article.title}"
+                 src="${imageUrl}" 
+                 alt="${safeArticle.title}"
                  loading="lazy"
-                 onerror="this.src='${fallbackImage}'">
+                 onerror="this.src='https://source.unsplash.com/800x400/?news'">
             <div class="news-content">
-                <h3 class="news-title">${article.title}</h3>
-                <p class="news-description">${article.description || 'No description available'}</p>
+                <h3 class="news-title">${safeArticle.title}</h3>
+                <p class="news-description">${safeArticle.description}</p>
                 <div class="news-meta">
-                    <span>${article.source?.name || 'Unknown Source'}</span>
-                    <span>${new Date(article.publishedAt).toLocaleDateString()}</span>
+                    <span>${safeArticle.source.name}</span>
+                    <span>${new Date(safeArticle.publishedAt).toLocaleDateString()}</span>
                 </div>
                 <button class="read-more-btn" onclick="showFullArticle(this)">
                     Read Full Article
@@ -133,9 +174,7 @@ function createNewsCard(article, isFeatured) {
             </div>
         </div>
     `;
-}
-
-function showFullArticle(button) {
+}function showFullArticle(button) {
     const article = JSON.parse(button.closest('.news-card').dataset.article);
     const modal = document.createElement('div');
     modal.className = 'article-modal';
@@ -199,6 +238,5 @@ function displaySampleNews(category) {
             publishedAt: new Date().toISOString()
         }
     ];
-    
     displayNews(sampleNews);
 }
