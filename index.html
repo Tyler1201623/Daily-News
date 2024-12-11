@@ -1,0 +1,58 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Pulse | Modern News Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta name="theme-color" content="#2563eb">
+    <link rel="preload" as="style" href="style.css">
+    <link rel="preload" as="font" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-newspaper"></i>
+                <h1>Daily Pulse</h1>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search news...">
+                <button id="searchBtn"><i class="fas fa-search"></i></button>
+            </div>
+            <div class="nav-categories">
+                <button class="category-btn active" data-category="general">General</button>
+                <button class="category-btn" data-category="technology">Tech</button>
+                <button class="category-btn" data-category="business">Business</button>
+                <button class="category-btn" data-category="health">Health</button>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="featured-container">
+            <h2>Featured Stories</h2>
+            <div id="featuredNews" class="featured-grid"></div>
+        </div>
+        
+        <div class="latest-container">
+            <h2>Latest News</h2>
+            <div id="latestNews" class="news-grid"></div>
+        </div>
+    </main>
+
+    <div class="loading-spinner">
+        <div class="spinner"></div>
+    </div>
+
+    <button id="darkModeToggle" class="theme-toggle" aria-label="Toggle Dark Mode">
+        <i class="fas fa-moon"></i>
+    </button>
+    <script src="main.js"></script>
+</body>
+</html>
